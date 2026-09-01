@@ -1,0 +1,30 @@
+* {
+    color: white;
+    box-sizing: border-box;
+}
+
+html, body {
+    background: black;
+    overflow-x: hidden;
+    overflow-y: hidden;
+}
+
+#container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+#game-canvas {
+    border: 1px solid white;
+    display: block;
+    margin-bottom: 60px;
+}
+
+#warning {
+    display: none;
+    margin: auto;
+    justify-content: center;
+    align-items: center;
+}
