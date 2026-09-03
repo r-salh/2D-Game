@@ -20,13 +20,15 @@ class Game {
 
     #lastTime = 0;
 
+    #menu;
     #overworld;
 
-    currentState = Game.State.OVERWORLD;
+    currentState = Game.State.MENU;
 
     constructor() {
         this.#initCanvas();
 
+        this.#menu = new Menu(this.#ctx);
         this.#overworld = new Overworld(this.#ctx);
 
         this.#addEventListeners();
@@ -51,6 +53,10 @@ class Game {
         this.#ctx.fillRect(0, 0, this.#canvas.width, this.#canvas.height);
 
         switch (this.currentState) {
+            case Game.State.MENU:
+                this.#menu.draw(this.#ctx);
+                break;
+
             case Game.State.OVERWORLD:
                 this.#overworld.draw(this.#ctx);
                 break;
@@ -59,6 +65,9 @@ class Game {
 
     update(deltaT) {
         switch (this.currentState) {
+            case Game.State.MENU:
+                break;
+
             case Game.State.OVERWORLD:
                 this.#overworld.update(deltaT);
                 break;
@@ -69,6 +78,10 @@ class Game {
         const key = e.key;
 
         switch (this.currentState) {
+            case Game.State.MENU:
+                this.#menu.keyUp(key);
+                break;
+
             case Game.State.OVERWORLD:
                 this.#overworld.keyUp(key);
                 break;
@@ -79,6 +92,9 @@ class Game {
         const key = e.key;
 
         switch (this.currentState) {
+            case Game.State.MENU:
+                break;
+
             case Game.State.OVERWORLD:
                 this.#overworld.keyDown(key);
                 break;

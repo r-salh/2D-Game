@@ -1,13 +1,3 @@
-const Keybind = {
-    Up: "ArrowUp",
-    Left: "ArrowLeft",
-    Down: "ArrowDown",
-    Right: "ArrowRight",
-    Accept: "c",
-    Cancel: "x",
-    Menu: "z",
-}
-
 class Party {
     //TODO
 }
