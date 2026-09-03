@@ -11,19 +11,25 @@ class Game {
     static AspectRatio = 0.75;
     static CanvasWidth = 700;
     static CanvasHeight = Game.CanvasWidth * Game.AspectRatio;
+    static TileSize = 60;
+    static TilesInWidth = Game.CanvasWidth / Game.TileSize;
+    static TilesInHeight = Game.CanvasHeight / Game.TileSize;
 
     #ctx;
     #canvas;
 
     #lastTime = 0;
 
-    currentState = Game.State.MENU;
+    #overworld;
+
+    currentState = Game.State.OVERWORLD;
 
     constructor() {
         this.#initCanvas();
 
-        this.#addEventListeners();
+        this.#overworld = new Overworld(this.#ctx);
 
+        this.#addEventListeners();
         requestAnimationFrame(t => this.loop(t));
     }
 
@@ -44,32 +50,38 @@ class Game {
         this.#ctx.fillStyle = '#1d1d1d'; 
         this.#ctx.fillRect(0, 0, this.#canvas.width, this.#canvas.height);
 
-        this.#ctx.fillStyle = 'hotpink';
-        this.#ctx.fillRect(100, 190, 100, 100);
-
-
         switch (this.currentState) {
-            //TODO
+            case Game.State.OVERWORLD:
+                this.#overworld.draw(this.#ctx);
+                break;
         }
     }
 
     update(deltaT) {
         switch (this.currentState) {
-            //TODO
+            case Game.State.OVERWORLD:
+                this.#overworld.update(deltaT);
+                break;
         }
     }
 
     keyUp(e) {
         const key = e.key;
+
         switch (this.currentState) {
-            //TODO
+            case Game.State.OVERWORLD:
+                this.#overworld.keyUp(key);
+                break;
         }
     }
 
     keyDown(e) {
         const key = e.key;
+
         switch (this.currentState) {
-            //TODO
+            case Game.State.OVERWORLD:
+                this.#overworld.keyDown(key);
+                break;
         }
     }
 
