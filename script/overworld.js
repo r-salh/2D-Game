@@ -9,14 +9,15 @@ class Overworld {
         this.#camera = new Camera();
         this.#camera.setFollowing(this.#player);
 
+        const callback = () => {
+            this.#camera.setLimits(
+                this.#mapManager.getLevelWidth(),
+                this.#mapManager.getLevelHeight(),
+            );
+        }
+
         this.#mapManager = new MapManager();
-        this.#mapManager.loadMap(MapManager.World1, ctx);
-
-        this.#camera.setLimits(
-            this.#mapManager.getLevelWidth(),
-            this.#mapManager.getLevelHeight(),
-        );
-
+        this.#mapManager.loadMap(MapManager.World1, ctx, callback);
     }
 
     update(deltaT) {
@@ -63,7 +64,7 @@ class MapManager {
         }
     }
 
-    loadMap(level, ctx) {
+    loadMap(level, ctx, callback = null) {
         this.#currentMap = [];
 
         const filename = "level/" + level + ".png";
@@ -95,6 +96,8 @@ class MapManager {
 
                 this.#currentMap.push(row);
             }
+
+            if (typeof callback === "function") { callback() }
         };
         
     }
@@ -188,11 +191,10 @@ class Camera {
         } else if (screenY > this.#bottomBorder) {
             this.#cameraY += screenY - this.#bottomBorder;
 
-            if (screenY > this.#maxDown) {
+            if (this.#cameraY > this.#maxDown) {
                 this.#cameraY = this.#maxDown;
             }
-        }
-        
+        }        
     }
 
     getX() {
