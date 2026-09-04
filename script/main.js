@@ -20,13 +20,19 @@ class Game {
 
     #lastTime = 0;
 
+    #imgLoader;
     #menu;
     #overworld;
 
-    currentState = Game.State.MENU;
+    currentState = Game.State.LOADING;
 
     constructor() {
         this.#initCanvas();
+
+        const onLoaded = () => {
+            this.currentState = Game.State.MENU;
+        };
+        this.#imgLoader = new ImageLoader(this.#ctx, () => setTimeout(onLoaded, 1500) );
 
         this.#menu = new Menu(this.#ctx);
         this.#overworld = new Overworld(this.#ctx);
@@ -53,6 +59,10 @@ class Game {
         this.#ctx.fillRect(0, 0, this.#canvas.width, this.#canvas.height);
 
         switch (this.currentState) {
+            case Game.State.LOADING:
+                this.#imgLoader.draw(this.#ctx);
+                break;
+
             case Game.State.MENU:
                 this.#menu.draw(this.#ctx);
                 break;
@@ -65,6 +75,10 @@ class Game {
 
     update(deltaT) {
         switch (this.currentState) {
+            case Game.State.LOADING:
+                this.#imgLoader.update(deltaT);
+                break;
+
             case Game.State.MENU:
                 break;
 
