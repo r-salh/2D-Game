@@ -11,7 +11,7 @@ class Game {
     static AspectRatio = 0.75;
     static CanvasWidth = 700;
     static CanvasHeight = Game.CanvasWidth * Game.AspectRatio;
-    static TileSize = 60;
+    static TileSize = 80;
     static TilesInWidth = Game.CanvasWidth / Game.TileSize;
     static TilesInHeight = Game.CanvasHeight / Game.TileSize;
 
@@ -24,7 +24,7 @@ class Game {
     #menu;
     #overworld;
 
-    currentState = Game.State.LOADING;
+    currentState = Game.State.OVERWORLD;
 
     constructor() {
         this.#initCanvas();
