@@ -89,7 +89,7 @@ class Game {
     }
 
     keyUp(e) {
-        const key = e.key;
+        const key = e.key.toLowerCase();
 
         switch (this.currentState) {
             case Game.State.MENU:
@@ -103,7 +103,7 @@ class Game {
     }
 
     keyDown(e) {
-        const key = e.key;
+        const key = e.key.toLowerCase();
 
         switch (this.currentState) {
             case Game.State.MENU:

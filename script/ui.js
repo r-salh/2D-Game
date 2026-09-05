@@ -14,10 +14,10 @@ const Theme = {
 }
 
 const Keybind = {
-    Up: "ArrowUp",
-    Left: "ArrowLeft",
-    Down: "ArrowDown",
-    Right: "ArrowRight",
+    Up: "arrowup",
+    Left: "arrowleft",
+    Down: "arrowdown",
+    Right: "arrowright",
     Accept: "c",
     Cancel: "x",
     Menu: "z",
