@@ -24,7 +24,7 @@ class Game {
     #menu;
     #overworld;
 
-    currentState = Game.State.OVERWORLD;
+    currentState = Game.State.MENU;
 
     constructor() {
         this.#initCanvas();

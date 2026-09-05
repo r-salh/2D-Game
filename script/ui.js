@@ -76,7 +76,10 @@ class TextBox {
 
     handleAction() {
         if (typeof this.onClick === "function") {
+            AudioPlayer.Click();
             this.onClick();
+        } else {
+            AudioPlayer.Negative();
         }
     }
 
@@ -253,10 +256,7 @@ class BoxContainer {
     }
 
     handleAction() {
-        const focussed = this.#focussedComponent();
-        if (typeof focussed.onClick === "function") {
-            focussed.onClick();
-        }
+        this.#focussedComponent().handleAction();
     }
 
     focusNeighbourNext() {
@@ -279,6 +279,8 @@ class BoxContainer {
             this._focussedIndex = this._focussedIndex + i;
             this.#focussedComponent().focussed = true;
         }
+
+        AudioPlayer.Next();
     }
 
     focusNeighbourPrev() {
@@ -300,6 +302,8 @@ class BoxContainer {
             this._focussedIndex = this._focussedIndex - i;
             this.#focussedComponent().focussed = true;
         }
+
+        AudioPlayer.Next();
     }
 
     #focussedComponent() {
