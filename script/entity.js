@@ -90,6 +90,13 @@ class Player {
         }
     }
 
+    resetBools() {
+        for (let key in this.#direction) {
+            this.#direction[key] = 0;
+        }
+        this.#sprinting = false;
+    }
+
     getX() {
         return this.#x + Player.Size/2;
     }

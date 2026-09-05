@@ -3,7 +3,12 @@ class Overworld {
     #camera;
     #mapManager;
 
+    #paused = false;
+    #pauseMenu;
+
     constructor(ctx) {
+
+        // Initialise objects
         this.#player = new Player();
     
         this.#camera = new Camera();
@@ -18,9 +23,20 @@ class Overworld {
 
         this.#mapManager = new MapManager();
         this.#mapManager.loadMap(MapManager.World1, ctx, callback);
+
+        // Initialise UI components
+        this.#pauseMenu = new HoriztonalBox(20, 20, 500, 100, 3, ctx);
+        this.#pauseMenu.addComponent("Inventory", ctx);
+        this.#pauseMenu.addComponent("Party", ctx);
+        this.#pauseMenu.setDisabledComponent(0, true);
+        this.#pauseMenu.setDisabledComponent(1, true);
+        this.#pauseMenu.addComponent("Close", ctx, () => this.setPaused(false));
+        this.setPaused(false);
     }
 
     update(deltaT) {
+        if (this.#paused === true) { return }
+
         this.#player.update(deltaT);
         this.#camera.update();
     }
@@ -28,14 +44,38 @@ class Overworld {
     draw(ctx) {
         this.#mapManager.draw(ctx, this.#camera);
         this.#player.draw(ctx, this.#camera);
+        this.#pauseMenu.draw(ctx);
     }
 
     keyUp(key) {
-        this.#player.keyUp(key);
+        if (key === Keybind.Menu) {
+            this.setPaused(!this.#paused);
+            return;
+        }
+
+        if (this.#paused === true) {
+            this.#pauseMenu.keyUp(key);
+        } else {
+            this.#player.keyUp(key);
+        }
     }
 
     keyDown(key) {
+        if (this.#paused === true) { return }
+
         this.#player.keyDown(key);
+    }
+
+    setPaused(paused) {
+        this.#paused = paused;
+
+        if (paused === true) {
+            this.#pauseMenu.visible = true;
+            this.#pauseMenu.setFocussed(true);
+            this.#player.resetBools();
+        } else {
+            this.#pauseMenu.visible = false;
+        }
     }
 }
 
