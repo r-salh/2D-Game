@@ -83,7 +83,7 @@ class Game {
                 break;
 
             case Game.State.OVERWORLD:
-                this.#overworld.update(deltaT);
+                this.#overworld.update(deltaT, this.#ctx);
                 break;
         }
     }

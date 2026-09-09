@@ -58,7 +58,7 @@ class Interactable {
         }
 
         if (typeof this.onInteract === "function") {
-            AudioPlayer.Click();
+            AudioPlayer.Next();
             this.onInteract();
         }
     }

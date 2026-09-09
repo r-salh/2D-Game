@@ -1,0 +1,38 @@
+{
+    "intro": [
+        {
+            "name": "?",
+            "line": "Hi, I'm Johnny Notsvil"
+        },
+        {
+            "name": "Johnny",
+            "line": "And welcome to the tutorial."
+        }
+    ],
+
+    "hi": [
+        {
+            "name": "Some guy",
+            "line": "Oh. Hi..."
+        },
+        {
+            "name": "Some guy",
+            "line": "(Kicks dust)"
+        },
+        {
+            "name": "You",
+            "line": "..."
+        }
+    ],
+
+    "jepha": [
+        {
+            "name": "Jepha",
+            "line": "Why am I naked?"
+        },
+        {
+            "name": "Jepha",
+            "line": "I dunno. Why are you naked?"
+        }
+    ]
+}

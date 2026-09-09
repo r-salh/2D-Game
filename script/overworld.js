@@ -4,6 +4,7 @@ class Overworld {
     #player;
     #camera;
     #mapManager;
+    #dialogueManager;
 
     #paused = false;
     #pauseMenu;
@@ -19,6 +20,7 @@ class Overworld {
         this.#camera.setFollowing(this.#player);
 
         this.#mapManager = new MapManager();
+        this.#dialogueManager = new DialogueManager(ctx);
 
         // Initialise UI components
         this.#pauseMenu = new HoriztonalBox(20, 20, 500, 100, 3, ctx);
@@ -32,7 +34,7 @@ class Overworld {
         this.loadDungeon(Overworld.Tutorial);
     }
 
-    update(deltaT) {
+    update(deltaT, ctx) {
         if (this.#paused === true) { return }
 
         this.#player.update(deltaT);
@@ -44,6 +46,8 @@ class Overworld {
         for (let i in this.#currentEntities) {
             this.#currentEntities[i].update(playerX, playerY);
         }
+
+        this.#dialogueManager.update(deltaT, ctx);
     }
 
     draw(ctx) {
@@ -55,6 +59,8 @@ class Overworld {
 
         this.#player.draw(ctx, this.#camera);
         this.#pauseMenu.draw(ctx);
+
+        this.#dialogueManager.draw(ctx);
     }
 
     keyUp(key) {
@@ -68,6 +74,13 @@ class Overworld {
             return;
         } 
 
+        if (this.#dialogueManager.isOpen()) {
+            if (key === Keybind.Accept) {
+                this.#dialogueManager.next();
+            }
+            return;
+        }
+
         if (key === Keybind.Accept) {
             for (let i in this.#currentEntities) {
                 this.#currentEntities[i].interact();
@@ -80,6 +93,8 @@ class Overworld {
 
     keyDown(key) {
         if (this.#paused === true) { return }
+
+        if (this.#dialogueManager.isOpen()) { return }
 
         this.#player.keyDown(key);
     }
@@ -107,6 +122,7 @@ class Overworld {
         }
 
         this.#mapManager.loadMap(dungeon, ctx, callback);
+        this.#dialogueManager.loadDialogue(dungeon);
 
         this.#loadEntities(dungeon);
     }
@@ -136,7 +152,8 @@ class Overworld {
                 case "npc":
                     const npc = new InteractableNPC(entity.x, entity.y);
                     npc.onInteract = () => {
-                        console.log(entity.conv);
+                        this.#player.resetBools();
+                        this.#dialogueManager.openConversation(entity.conv);
                     };
                     this.#currentEntities.push(npc);
                     break;

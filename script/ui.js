@@ -108,6 +108,10 @@ class TextBox {
         }
     }
 
+    clear() {
+        this.#text = "";
+    }
+
     #setPadding(ctx) {
         ctx.font = this.font;
         const metrics = ctx.measureText(this.#text);
