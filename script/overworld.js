@@ -1,10 +1,14 @@
 class Overworld {
+    static Tutorial = "tutorial";
+
     #player;
     #camera;
     #mapManager;
 
     #paused = false;
     #pauseMenu;
+
+    #currentEntities;
 
     constructor(ctx) {
 
@@ -14,15 +18,7 @@ class Overworld {
         this.#camera = new Camera();
         this.#camera.setFollowing(this.#player);
 
-        const callback = () => {
-            this.#camera.setLimits(
-                this.#mapManager.getLevelWidth(),
-                this.#mapManager.getLevelHeight(),
-            );
-        }
-
         this.#mapManager = new MapManager();
-        this.#mapManager.loadMap(MapManager.World1, ctx, callback);
 
         // Initialise UI components
         this.#pauseMenu = new HoriztonalBox(20, 20, 500, 100, 3, ctx);
@@ -32,6 +28,8 @@ class Overworld {
         this.#pauseMenu.setDisabledComponent(1, true);
         this.#pauseMenu.addComponent("Close", ctx, () => this.setPaused(false));
         this.setPaused(false);
+
+        this.loadDungeon(Overworld.Tutorial);
     }
 
     update(deltaT) {
@@ -40,14 +38,21 @@ class Overworld {
         this.#player.update(deltaT);
         this.#camera.update();
         
-        this.#mapManager.update(
-            this.#player.getX(), 
-            this.#player.getY()
-        );
+        const playerX = this.#player.getX();
+        const playerY = this.#player.getY();
+
+        for (let i in this.#currentEntities) {
+            this.#currentEntities[i].update(playerX, playerY);
+        }
     }
 
     draw(ctx) {
         this.#mapManager.draw(ctx, this.#camera);
+    
+        for (let i in this.#currentEntities) {
+            this.#currentEntities[i].draw(ctx, this.#camera);
+        }
+
         this.#player.draw(ctx, this.#camera);
         this.#pauseMenu.draw(ctx);
     }
@@ -60,10 +65,17 @@ class Overworld {
 
         if (this.#paused === true) {
             this.#pauseMenu.keyUp(key);
-        } else {
-            this.#player.keyUp(key);
-            this.#mapManager.keyUp(key);
+            return;
+        } 
+
+        if (key === Keybind.Accept) {
+            for (let i in this.#currentEntities) {
+                this.#currentEntities[i].interact();
+            }
+            return;
         }
+
+        this.#player.keyUp(key);
     }
 
     keyDown(key) {
@@ -83,13 +95,58 @@ class Overworld {
             this.#pauseMenu.visible = false;
         }
     }
+
+    loadDungeon(dungeon) {
+        const ctx = document.getElementById("game-canvas").getContext("2d");
+
+        const callback = () => {
+            this.#camera.setLimits(
+                this.#mapManager.getLevelWidth(),
+                this.#mapManager.getLevelHeight(),
+            );
+        }
+
+        this.#mapManager.loadMap(dungeon, ctx, callback);
+
+        this.#loadEntities(dungeon);
+    }
+
+    #loadEntities(dungeon) {
+        const url = `../dungeon/${dungeon}/entity.json`;
+
+        fetch(url, {
+            method: "GET",
+            headers: {
+                'Accept': 'application/json',
+            },
+        })
+
+        .then(response => response.json())
+
+        .then(response => this.#parseEntities(response));
+    }
+
+    #parseEntities(entityArray) {
+        this.#currentEntities = [];
+
+        for (let i in entityArray) {
+            const entity = entityArray[i];
+
+            switch (entity.type) {
+                case "npc":
+                    const npc = new InteractableNPC(entity.x, entity.y);
+                    npc.onInteract = () => {
+                        console.log(entity.conv);
+                    };
+                    this.#currentEntities.push(npc);
+                    break;
+            }
+        }
+    }
 }
 
 class MapManager {
-    static World1 = "world_1";
-
     #currentMap;
-    #currentMapEntities;
 
     #mapWidth;
     #mapHeight;
@@ -104,10 +161,10 @@ class MapManager {
         this.#loadTiles();
     }
 
-    loadMap(level, ctx, callback = null) {
+    loadMap(dungeon, ctx, callback = null) {
         this.#currentMap = [];
 
-        const filename = "level/" + level + ".png";
+        const filename = `dungeon/${dungeon}/structure.png`;
 
         const mapImg = new Image();
         mapImg.src = filename;
@@ -139,15 +196,6 @@ class MapManager {
 
             if (typeof callback === "function") { callback() }
         };
-        
-        this.#loadEntities(level);
-    }
-
-    update(playerX, playerY) {
-        for (let i in this.#currentMapEntities) {
-            let entity = this.#currentMapEntities[i];
-            entity.update(playerX, playerY);
-        }
     }
 
     draw(ctx, camera) {
@@ -169,21 +217,6 @@ class MapManager {
             screenX = xTile * Game.TileSize - camera.getX();
             screenY += Game.TileSize;
         }
-
-        for (let i in this.#currentMapEntities) {
-            let entity = this.#currentMapEntities[i];
-            entity.draw(ctx, camera);
-        }
-    }
-
-    keyUp(key) {
-        if (key !== Keybind.Accept) {
-            return;
-        }
-
-        for (let i in this.#currentMapEntities) {
-            this.#currentMapEntities[i].interact();
-        }
     }
 
     getLevelWidth() {
@@ -192,20 +225,6 @@ class MapManager {
 
     getLevelHeight() {
         return this.#mapHeight;
-    }
-
-    #loadEntities(level) {
-        switch (level) {
-            case MapManager.World1:
-                let john = new InteractableNPC(5, 5);
-                john.onInteract = () => {
-                    console.log("!!!");
-                }
-                this.#currentMapEntities = [
-                    john,
-                ];
-                break;
-        }
     }
 
     #loadTiles() {
