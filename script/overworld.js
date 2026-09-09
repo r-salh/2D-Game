@@ -39,6 +39,11 @@ class Overworld {
 
         this.#player.update(deltaT);
         this.#camera.update();
+        
+        this.#mapManager.update(
+            this.#player.getX(), 
+            this.#player.getY()
+        );
     }
 
     draw(ctx) {
@@ -57,6 +62,7 @@ class Overworld {
             this.#pauseMenu.keyUp(key);
         } else {
             this.#player.keyUp(key);
+            this.#mapManager.keyUp(key);
         }
     }
 
@@ -83,6 +89,7 @@ class MapManager {
     static World1 = "world_1";
 
     #currentMap;
+    #currentMapEntities;
 
     #mapWidth;
     #mapHeight;
@@ -94,14 +101,7 @@ class MapManager {
     #numTiles = 18;
 
     constructor() {
-
-        // Load tiles
-        this.#tile = [];
-        for (let i = 0; i < this.#numTiles; i++) {
-            const newImg = new Image();
-            newImg.src = `art/tile/${i}.png`;
-            this.#tile.push(newImg);
-        }
+        this.#loadTiles();
     }
 
     loadMap(level, ctx, callback = null) {
@@ -140,6 +140,14 @@ class MapManager {
             if (typeof callback === "function") { callback() }
         };
         
+        this.#loadEntities(level);
+    }
+
+    update(playerX, playerY) {
+        for (let i in this.#currentMapEntities) {
+            let entity = this.#currentMapEntities[i];
+            entity.update(playerX, playerY);
+        }
     }
 
     draw(ctx, camera) {
@@ -161,6 +169,21 @@ class MapManager {
             screenX = xTile * Game.TileSize - camera.getX();
             screenY += Game.TileSize;
         }
+
+        for (let i in this.#currentMapEntities) {
+            let entity = this.#currentMapEntities[i];
+            entity.draw(ctx, camera);
+        }
+    }
+
+    keyUp(key) {
+        if (key !== Keybind.Accept) {
+            return;
+        }
+
+        for (let i in this.#currentMapEntities) {
+            this.#currentMapEntities[i].interact();
+        }
     }
 
     getLevelWidth() {
@@ -169,6 +192,29 @@ class MapManager {
 
     getLevelHeight() {
         return this.#mapHeight;
+    }
+
+    #loadEntities(level) {
+        switch (level) {
+            case MapManager.World1:
+                let john = new InteractableNPC(5, 5);
+                john.onInteract = () => {
+                    console.log("!!!");
+                }
+                this.#currentMapEntities = [
+                    john,
+                ];
+                break;
+        }
+    }
+
+    #loadTiles() {
+        this.#tile = [];
+        for (let i = 0; i < this.#numTiles; i++) {
+            const newImg = new Image();
+            newImg.src = `art/tile/${i}.png`;
+            this.#tile.push(newImg);
+        }
     }
 }
 

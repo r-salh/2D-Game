@@ -1,3 +1,75 @@
+class Interactable {
+    promptRadius = 160;
+    showPrompt = false;
+    onInteract = null;
+
+    #sprite;
+    #x;
+    #y;
+    #width;
+    #height;
+
+    #promptX;
+    #promptY;
+
+    constructor(sprite, tileX, tileY, width, height) {
+        this.#sprite = sprite;
+
+        const xOffset = (Game.TileSize - width) / 2;
+        const yOffset = Game.TileSize - height;
+
+        this.#x = tileX * Game.TileSize + xOffset;
+        this.#y = tileY * Game.TileSize + yOffset;
+        this.#width = width;
+        this.#height = height;
+
+        this.#promptX = this.#x + this.#width/2 - 5;
+        this.#promptY = this.#y - 5;
+    }
+
+    draw(ctx, camera) {
+        const cameraX = camera.getX();
+        const cameraY = camera.getY();
+
+        ctx.fillStyle = "pink";
+        ctx.drawImage(this.#sprite, this.#x - cameraX, this.#y - cameraY, this.#width, this.#height);
+
+        if (this.showPrompt === true) {
+            ctx.fillStyle = "black";
+            ctx.fillText("!", this.#promptX - cameraX, this.#promptY - cameraY);
+        }
+    }
+
+    update(playerX, playerY) {
+        const deltaX = Math.abs(playerX - this.#x);
+        const deltaY = Math.abs(playerY - this.#y);
+        const dist = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+
+        if (dist < this.promptRadius) {
+            this.showPrompt = true;
+        } else {
+            this.showPrompt = false;
+        }
+    }
+
+    interact() {
+        if (this.showPrompt === false) {
+            return;
+        }
+
+        if (typeof this.onInteract === "function") {
+            AudioPlayer.Click();
+            this.onInteract();
+        }
+    }
+}
+
+class InteractableNPC extends Interactable {
+    constructor(tileX, tileY) {
+        super(ImageLoader.PlayerImages.standDown[0], tileX, tileY, Player.Size, Player.Size);
+    }
+}
+
 class Party {
     //TODO
 }
