@@ -24,6 +24,8 @@ class Game {
     #menu;
     #overworld;
 
+    #party;
+
     currentState = Game.State.OVERWORLD;
 
     constructor() {
@@ -35,7 +37,9 @@ class Game {
         this.#imgLoader = new ImageLoader(this.#ctx, () => setTimeout(onLoaded, 1500) );
 
         this.#menu = new Menu(this.#ctx);
-        this.#overworld = new Overworld(this.#ctx);
+
+        this.#party = new Party();
+        this.#overworld = new Overworld(this.#party, this.#ctx);
 
         this.#addEventListeners();
         requestAnimationFrame(t => this.loop(t));

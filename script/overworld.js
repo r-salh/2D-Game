@@ -1,7 +1,9 @@
 class Overworld {
     static Tutorial = "tutorial";
 
+    #party;
     #player;
+
     #camera;
     #mapManager;
     #dialogueManager;
@@ -11,11 +13,11 @@ class Overworld {
 
     #currentEntities;
 
-    constructor(ctx) {
+    constructor(party, ctx) {
+        this.#party = party;
+        this.#player = party.getPlayer();
 
         // Initialise objects
-        this.#player = new Player();
-    
         this.#camera = new Camera();
         this.#camera.setFollowing(this.#player);
 
@@ -37,7 +39,7 @@ class Overworld {
     update(deltaT, ctx) {
         if (this.#paused === true) { return }
 
-        this.#player.update(deltaT);
+        this.#party.update(deltaT);
         this.#camera.update();
         
         const playerX = this.#player.getX();
@@ -57,7 +59,7 @@ class Overworld {
             this.#currentEntities[i].draw(ctx, this.#camera);
         }
 
-        this.#player.draw(ctx, this.#camera);
+        this.#party.draw(ctx, this.#camera);
         this.#pauseMenu.draw(ctx);
 
         this.#dialogueManager.draw(ctx);

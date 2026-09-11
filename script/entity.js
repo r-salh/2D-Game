@@ -71,7 +71,23 @@ class InteractableNPC extends Interactable {
 }
 
 class Party {
-    //TODO
+    #player;
+
+    constructor() {
+        this.#player = new Player();
+    }
+
+    update(deltaT) {
+        this.#player.update(deltaT);
+    }
+
+    draw(ctx, camera) {
+        this.#player.draw(ctx, camera);
+    }
+
+    getPlayer() {
+        return this.#player;
+    }
 }
 
 class Player {
