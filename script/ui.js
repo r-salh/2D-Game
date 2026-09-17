@@ -11,6 +11,8 @@ const Theme = {
     LineWidth: 1.5,
 
     Font: "20px Arial",
+    Padding: 17,
+    SpaceBetweenLines: 12,
 }
 
 const Keybind = {
@@ -29,7 +31,13 @@ const Keybind = {
 class TextBox {
     static Cursor = "☞ ";
 
+    static Alignment = {
+        Centered: 0,
+        TopLeft: 1,
+    };
+
     #text;
+    #textArray;
 
     #x;
     #y;
@@ -38,6 +46,11 @@ class TextBox {
 
     #textX;
     #textY;
+
+    #textHeight;
+    #textAlignment = TextBox.Alignment.Centered;
+    #padding = Theme.Padding;
+    #spaceBetweenLines = Theme.SpaceBetweenLines;
 
     #cursorX;
 
@@ -101,7 +114,23 @@ class TextBox {
 
         this.#setFontColor(ctx);
         ctx.font = this.font;
-        ctx.fillText(this.#text, this.#textX, this.#textY);
+        switch (this.#textAlignment) {
+            case TextBox.Alignment.TopLeft:
+                let y = this.#textY;
+
+                for (let i in this.#textArray) {
+                    const line = this.#textArray[i];
+                    ctx.fillText(line, this.#textX, y);
+                    y += this.#textHeight;
+                }
+
+                break;
+
+            default:
+            case TextBox.Alignment.Centered:
+                ctx.fillText(this.#text, this.#textX, this.#textY);
+                break;
+        }
 
         if (this.focussed && this.focussable) {
             ctx.fillText(TextBox.Cursor, this.#cursorX, this.#textY);
@@ -112,17 +141,57 @@ class TextBox {
         this.#text = "";
     }
 
+    setAlignment(alignment, ctx) {
+        this.#textAlignment = alignment;
+        this.#setPadding(ctx);
+    }
+
     #setPadding(ctx) {
         ctx.font = this.font;
-        const metrics = ctx.measureText(this.#text);
-        const txtWidth = metrics.width;
-        const txtHeight = metrics.actualBoundingBoxAscent;
 
-        const xPadding = (this.#width - txtWidth)/2;
-        const yPadding = (this.#height + txtHeight)/2;
+        switch (this.#textAlignment) {
+            case TextBox.Alignment.TopLeft:
+                this.#textHeight = ctx.measureText(this.#text).actualBoundingBoxAscent + this.#spaceBetweenLines;
 
-        this.#textX = this.#x + xPadding;
-        this.#textY = this.#y + yPadding;
+                this.#textX = this.#x + this.#padding;
+                this.#textY = this.#y + this.#padding + this.#textHeight*0.5;
+
+                const maxTextWidth = this.#width - 2*this.#padding;
+                this.#textArray = [];
+
+                // Source - https://stackoverflow.com/a/16599668
+                // Posted by crazy2be, modified by community. See post 'Timeline' for change history
+                // Retrieved 2026-09-17, License - CC BY-SA 3.0
+                const words = this.#text.split(" ");
+                let currentLine = words[0];
+
+                for (let i = 1; i < words.length; i++) {
+                    const word = words[i];
+                    const width = ctx.measureText(currentLine + " " + word).width;
+
+                    if (width < maxTextWidth) {
+                        currentLine += " " + word;
+                    } else {
+                        this.#textArray.push(currentLine);
+                        currentLine = word;
+                    }
+                }
+                this.#textArray.push(currentLine);
+                break;
+
+            default:
+            case TextBox.Alignment.Centered:
+                const metrics = ctx.measureText(this.#text);
+                const txtWidth = metrics.width;
+                const txtHeight = metrics.actualBoundingBoxAscent;
+
+                const xPadding = (this.#width - txtWidth)/2;
+                const yPadding = (this.#height + txtHeight)/2;
+
+                this.#textX = this.#x + xPadding;
+                this.#textY = this.#y + yPadding;
+                break;
+        }
 
         // Cursor placement
         if (this.focussable) {
