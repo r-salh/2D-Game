@@ -1,0 +1,21 @@
+{
+    "Apple": {
+        "desc": "Sweet and crunchy!",
+        "hp": 3
+    },
+
+    "Fries": {
+        "desc": "Needs more salt.",
+        "hp": 3
+    },
+
+    "Firm Tofu": {
+        "desc": "Perfect texture...",
+        "hp": 5
+    },
+
+    "Veggie B.": {
+        "desc": "Awesome meat-free burger.",
+        "hp": 6
+    }
+}

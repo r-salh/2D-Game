@@ -1,6 +1,12 @@
 class Overworld {
     static Tutorial = "tutorial";
 
+    static State = {
+        Playing: 0,
+        Paused: 1,
+        Dialogue: 2,
+    };
+
     #party;
     #player;
 
@@ -8,10 +14,11 @@ class Overworld {
     #mapManager;
     #dialogueManager;
 
-    #paused = false;
     #pauseMenu;
 
     #currentEntities;
+
+    #state = Overworld.State.Playing;
 
     constructor(party, ctx) {
         this.#party = party;
@@ -22,34 +29,40 @@ class Overworld {
         this.#camera.setFollowing(this.#player);
 
         this.#mapManager = new MapManager();
-        this.#dialogueManager = new DialogueManager(ctx);
+        this.#dialogueManager = new DialogueManager(
+            party.getInventory(),
+            ctx
+        );
 
-        // Initialise UI components
-        this.#pauseMenu = new HoriztonalBox(20, 20, 500, 100, 3, ctx);
-        this.#pauseMenu.addComponent("Inventory", ctx);
-        this.#pauseMenu.addComponent("Party", ctx);
-        this.#pauseMenu.setDisabledComponent(0, true);
-        this.#pauseMenu.setDisabledComponent(1, true);
-        this.#pauseMenu.addComponent("Close", ctx, () => this.setPaused(false));
-        this.setPaused(false);
+        this.#pauseMenu = new PauseMenu(
+            party.getInventory(),
+            ctx
+        );
 
         this.loadDungeon(Overworld.Tutorial);
     }
 
     update(deltaT, ctx) {
-        if (this.#paused === true) { return }
+        switch (this.#state) {
+            case Overworld.State.Paused:
+                return;
 
-        this.#party.update(deltaT);
-        this.#camera.update();
-        
-        const playerX = this.#player.getX();
-        const playerY = this.#player.getY();
+            case Overworld.State.Dialogue:
+                this.#dialogueManager.update(deltaT, ctx);
+                break;
 
-        for (let i in this.#currentEntities) {
-            this.#currentEntities[i].update(playerX, playerY);
+            case Overworld.State.Playing:
+                this.#party.update(deltaT);
+                this.#camera.update();
+                
+                const playerX = this.#player.getX();
+                const playerY = this.#player.getY();
+
+                for (let i in this.#currentEntities) {
+                    this.#currentEntities[i].update(playerX, playerY);
+                }
+                break;
         }
-
-        this.#dialogueManager.update(deltaT, ctx);
     }
 
     draw(ctx) {
@@ -60,56 +73,51 @@ class Overworld {
         }
 
         this.#party.draw(ctx, this.#camera);
-        this.#pauseMenu.draw(ctx);
 
         this.#dialogueManager.draw(ctx);
+        this.#pauseMenu.draw(ctx);
     }
 
     keyUp(key) {
-        if (key === Keybind.Menu) {
-            this.setPaused(!this.#paused);
-            return;
+        switch (this.#state) {
+            case Overworld.State.Paused:
+                if (key === Keybind.Menu) {
+                    this.#pauseMenu.toggle();
+                    this.#state = Overworld.State.Playing;
+                    return;
+                }
+                this.#pauseMenu.keyUp(key);
+                break;
+
+            case Overworld.State.Playing:
+                if (key === Keybind.Menu) {
+                    this.#player.resetBools();
+                    this.#pauseMenu.toggle();
+                    this.#state = Overworld.State.Paused;
+                    return;
+                }
+                
+                if (key === Keybind.Accept) {
+                    for (let i in this.#currentEntities) {
+                        this.#currentEntities[i].interact();
+                    }
+                    return;
+                }
+
+                this.#player.keyUp(key);
+                break;
+
+            case Overworld.State.Dialogue:
+                if (key === Keybind.Accept) {
+                    this.#dialogueManager.next();
+                }
+                break;
         }
-
-        if (this.#paused === true) {
-            this.#pauseMenu.keyUp(key);
-            return;
-        } 
-
-        if (this.#dialogueManager.isOpen()) {
-            if (key === Keybind.Accept) {
-                this.#dialogueManager.next();
-            }
-            return;
-        }
-
-        if (key === Keybind.Accept) {
-            for (let i in this.#currentEntities) {
-                this.#currentEntities[i].interact();
-            }
-            return;
-        }
-
-        this.#player.keyUp(key);
     }
 
     keyDown(key) {
-        if (this.#paused === true) { return }
-
-        if (this.#dialogueManager.isOpen()) { return }
-
-        this.#player.keyDown(key);
-    }
-
-    setPaused(paused) {
-        this.#paused = paused;
-
-        if (paused === true) {
-            this.#pauseMenu.visible = true;
-            this.#pauseMenu.setFocussed(true);
-            this.#player.resetBools();
-        } else {
-            this.#pauseMenu.visible = false;
+        if (this.#state === Overworld.State.Playing) {
+            this.#player.keyDown(key);
         }
     }
 
@@ -154,13 +162,28 @@ class Overworld {
                 case "npc":
                     const npc = new InteractableNPC(entity.x, entity.y);
                     npc.onInteract = () => {
-                        this.#player.resetBools();
-                        this.#dialogueManager.openConversation(entity.conv);
+                        this.#openConversation(entity.conv);
                     };
                     this.#currentEntities.push(npc);
                     break;
+
+                case "bin":
+                    const bin = new Bin(entity.x, entity.y, this.#party.getInventory());
+                    this.#currentEntities.push(bin);
+                    break;
             }
         }
+    }
+
+    #openConversation(conv) {
+        this.#player.resetBools();
+        this.#state = Overworld.State.Dialogue;
+
+        const callback = () => {
+            this.#state = Overworld.State.Playing;
+        };
+
+        this.#dialogueManager.openConversation(conv, callback);
     }
 }
 
@@ -335,5 +358,97 @@ class Camera {
 
     getTileY() {
         return Math.floor(this.#cameraY / Game.TileSize);
+    }
+}
+
+class PauseMenu {
+    static State = {
+        Main: 0,
+        ShowInventory: 1,
+        ShowParty: 2,
+        ShowMap: 3,
+    };
+
+    #state = PauseMenu.State.Main;
+    #open = false;
+
+    #optionsMenu;
+    #playerInventory;
+
+    constructor(playerInventory, ctx) {
+        this.#playerInventory = playerInventory;
+
+        this.#optionsMenu = new HoriztonalBox(20, 20, 450, 100, 3, ctx);
+
+        this.#optionsMenu.addComponent(
+            "Inventory", 
+            ctx, 
+            () => this.#setState(PauseMenu.State.ShowInventory));
+
+        this.#optionsMenu.addComponent(
+            "Party",
+            ctx,
+            () => this.#setState(PauseMenu.State.ShowParty)
+        );
+        this.#optionsMenu.setDisabledComponent(1, true);
+
+        this.#optionsMenu.addComponent(
+            "Map",
+            ctx,
+            () => this.#setState(PauseMenu.State.ShowParty)
+        );
+        this.#optionsMenu.setDisabledComponent(2, true);
+    }
+
+    draw(ctx) {
+        if (!this.#open) { return }
+
+        this.#optionsMenu.draw(ctx);
+
+        switch (this.#state) {
+            case PauseMenu.State.ShowInventory:
+                this.#playerInventory.draw(ctx);
+        }
+    }
+
+    keyUp(key) {
+        if (key === Keybind.Cancel) {
+            this.#setState(PauseMenu.State.Main);
+            return;
+        }
+
+        switch (this.#state) {
+            case PauseMenu.State.Main:
+                this.#optionsMenu.keyUp(key);
+                break;
+
+            case PauseMenu.State.ShowInventory:
+                this.#playerInventory.keyUp(key);
+                break;
+        }
+    }
+
+    toggle() {
+        this.#open = !this.#open;
+
+        if (this.#open) {
+            this.#setState(PauseMenu.State.Main);
+        }
+    }
+
+    #setState(state) {
+        this.#state = state;
+
+        switch (state) {
+            case PauseMenu.State.Main:
+                this.#optionsMenu.setFocussed(true);
+                return;
+
+            case PauseMenu.State.ShowInventory:
+                this.#playerInventory.setFocussed(true);
+                break;
+        }
+
+        this.#optionsMenu.setFocussed(false);
     }
 }

@@ -38,7 +38,7 @@ class Game {
 
         this.#menu = new Menu(this.#ctx);
 
-        this.#party = new Party();
+        this.#party = new Party(this.#ctx);
         this.#overworld = new Overworld(this.#party, this.#ctx);
 
         this.#addEventListeners();

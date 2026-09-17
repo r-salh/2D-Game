@@ -72,9 +72,11 @@ class InteractableNPC extends Interactable {
 
 class Party {
     #player;
+    #inventory;
 
-    constructor() {
+    constructor(ctx) {
         this.#player = new Player();
+        this.#inventory = new Inventory(ctx);
     }
 
     update(deltaT) {
@@ -87,6 +89,10 @@ class Party {
 
     getPlayer() {
         return this.#player;
+    }
+
+    getInventory() {
+        return this.#inventory;
     }
 }
 
@@ -280,6 +286,204 @@ class Player {
             this.#aniIndex += 1;
             this.#aniIndex = this.#aniIndex % this.#sprite[this.#action].length;
             this.#aniFrame = 0;
+        }
+    }
+}
+
+class Inventory {
+    static Capacity = 15;
+    static ItemList = {};
+
+    #items;
+
+    #grid;
+    
+    #itemComponents = [];
+    #infoBackground;
+    #itemName;
+    #itemDesc;
+    #itemStrength;
+    #itemType;
+
+    constructor(ctx) {
+        this.#items = [
+            "Apple",
+            "Mini Dew",
+            "Monster",
+            "Veggie B.",
+        ];
+
+        this.#initUIComponents(ctx);
+
+        if (this.#gameItemsNotLoaded()) {
+            this.#loadGameItems();
+        }
+    }
+
+    addItem(item) {
+        if (this.#items.length >= Inventory.Capacity) {
+            return 1;
+        }
+
+        this.#items.push(item);
+        this.#items.sort();
+        this.#updateGrid();
+    }
+
+    draw(ctx) {
+        this.#grid.draw(ctx);
+        
+        for (let i in this.#itemComponents) {
+            this.#itemComponents[i].draw(ctx);
+        }
+    }
+
+    keyUp(key) {
+        this.#grid.keyUp(key);
+    }
+
+    setFocussed(focussed) {
+        this.#grid.setFocussed(focussed);
+        
+        for (let i in this.#itemComponents) {
+            this.#itemComponents[i].visible = false;
+        }
+    }
+
+    #updateGrid() {
+        const ctx = document.getElementById("game-canvas").getContext("2d");
+
+        this.#grid.clear();
+        for (let i in this.#items) {
+            const itemName = this.#items[i];
+            const onClick = () => {
+                this.#showItemInfo(itemName);
+            }
+            this.#grid.addComponent(itemName, ctx, onClick);
+        }
+
+        if (this.#items.length == Inventory.Capacity) { return }
+
+        for (let i = this.#items.length; i < 15; i++) {
+            this.#grid.addComponent("------", ctx);
+            this.#grid.setDisabledComponent(i, true);
+        }
+    }
+
+    #showItemInfo(itemName) {
+        const ctx = document.getElementById("game-canvas").getContext("2d");
+
+        const itemProperties = Inventory.ItemList[itemName];
+        const itemDesc = itemProperties.desc;
+        const itemType = itemProperties.type.charAt(0).toUpperCase() + itemProperties.type.substring(1);
+
+        this.#itemName.setText(itemName, ctx);
+        this.#itemDesc.setText(itemDesc, ctx);
+        this.#itemType.setText(itemType, ctx);
+
+        switch (itemType) {
+            case "Food":
+                const hp = itemProperties.hp;
+                this.#itemStrength.setText(`Recovers ${hp} HP`, ctx);
+                break;
+
+            case "Drink":
+                const mp = itemProperties.mp;
+                this.#itemStrength.setText(`Recovers ${mp} MP`, ctx);
+                break;
+
+            default:
+                this.#itemStrength.setText("", ctx);
+        }
+
+        for (let i in this.#itemComponents) {
+            this.#itemComponents[i].visible = true;
+        }
+    }
+
+    #loadGameItems() {
+        const assetFile = [
+            "drink",
+            "food",
+            "item"
+        ];
+
+        for (let i in assetFile) {
+            this.#loadJSON(assetFile[i]);
+        }
+    }
+
+    #loadJSON(filename) {
+        const url = `assets/${filename}.json`;
+
+        fetch(url, {
+            method: "GET",
+            headers: {
+                'Accept': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(response => {
+            this.#parseItems(filename, response);
+        })
+    }
+
+    #parseItems(itemType, itemArray) {
+        for (let itemName in itemArray) {
+            const itemObj = itemArray[itemName];
+            itemObj.type = itemType;
+            Inventory.ItemList[itemName] = itemObj;
+        }
+    }
+
+    #gameItemsNotLoaded() {
+        return Object.keys(Inventory.ItemList).length === 0;
+    }
+
+    #initUIComponents(ctx) {
+               const gridHeight = 300;
+        const gridY = 130;
+
+        this.#grid = new Grid(5, 3, 20, gridY, 450, gridHeight);
+        this.#updateGrid();
+
+        const smHeight = 45;
+        const medHeight = 100;
+
+        const infoWidth = 200;
+        const infoHeight = 3*smHeight + medHeight - 4;
+        const infoX = 480;
+        const infoY = gridY;
+
+        this.#infoBackground = new TextBox("", infoX, infoY, infoWidth, infoHeight, ctx);
+        this.#infoBackground.visible = false;
+        this.#itemComponents.push(this.#infoBackground);
+        
+        this.#itemName = new TextBox("item name", infoX, infoY, infoWidth, smHeight, ctx);
+        this.#itemComponents.push(this.#itemName);
+        
+        const descY = infoY + smHeight;
+        this.#itemDesc = new TextBox("Item description item description", infoX, descY, infoWidth, medHeight, ctx);
+        this.#itemComponents.push(this.#itemDesc);
+
+        const strengthY = descY + medHeight;
+        this.#itemStrength = new TextBox("Heals 5 hp", infoX, strengthY, infoWidth, smHeight, ctx);
+        this.#itemComponents.push(this.#itemStrength);
+
+        const typeY = strengthY + smHeight - 10;
+        this.#itemType = new TextBox("Item type", infoX, typeY, infoWidth, smHeight, ctx);
+        this.#itemComponents.push(this.#itemType);
+
+
+        for (let i = 1; i < this.#itemComponents.length; i++) {
+            const component = this.#itemComponents[i];
+            component.setAlignment(TextBox.Alignment.TopLeft, ctx);
+            component.focussable = false;
+        }
+        for (let i = 2; i < this.#itemComponents.length; i++) {
+            const component = this.#itemComponents[i];
+            component.background = null;
+            component.border = null;
         }
     }
 }

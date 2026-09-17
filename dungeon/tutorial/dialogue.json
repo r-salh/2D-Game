@@ -2,37 +2,58 @@
     "intro": [
         {
             "name": "?",
-            "line": "Hi, I'm Johnny Notsvil"
+            "line": "Hi, I'm Johnny Notsvil",
+            "type": "dialogue"
         },
         {
             "name": "Johnny",
-            "line": "And welcome to the tutorial."
+            "line": "And welcome to the tutorial.",
+            "type": "dialogue"
         }
     ],
 
     "hi": [
         {
             "name": "Some guy",
-            "line": "Oh. Hi..."
+            "line": "Oh. Hi...",
+            "type": "dialogue"
         },
         {
             "name": "Some guy",
-            "line": "(Kicks dust)"
+            "line": "(Kicks dust)",
+            "type": "dialogue"
         },
         {
             "name": "You",
-            "line": "..."
+            "line": "...",
+            "type": "dialogue"
+        },
+        {
+            "name": "You",
+            "line": "(Huh?!)",
+            "type": "dialogue"
+        },
+        {
+            "name": "You",
+            "line": "(There's something in the dirt...)",
+            "type": "dialogue"
+        },
+        {
+            "type": "item",
+            "item": "USB Stick"
         }
     ],
 
     "jepha": [
         {
             "name": "Jepha",
-            "line": "Why am I naked?"
+            "line": "Why am I naked?",
+            "type": "dialogue"
         },
         {
             "name": "Jepha",
-            "line": "I dunno. Why are you naked?"
+            "line": "I dunno. Why are you naked?",
+            "type": "dialogue"
         }
     ]
 }

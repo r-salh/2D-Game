@@ -15,11 +15,18 @@ class DialogueManager {
     #currentConv;
     #lineIndex = -1;
     #charIndex = 1;
+    #currentLine;
 
     #nameLabel;
     #dialogueArea
 
-    constructor(ctx) {
+    #playerInventory;
+
+    #callback;
+
+    constructor(inventory, ctx) {
+        this.#playerInventory = inventory;
+
         const padding = 20;
         const daWidth = Game.CanvasWidth - padding*2;
         const daHeight = 110;
@@ -44,7 +51,7 @@ class DialogueManager {
     }
 
     update(deltaT, ctx) {
-        if (this.#state === DialogueManager.State.Hidden) {
+        if (this.#state !== DialogueManager.State.Writing) {
             return;
         }
 
@@ -56,22 +63,12 @@ class DialogueManager {
         this.#timeElapsed -= this.animationSpeed;
         this.#charIndex++;
 
-        const line = this.#currentLine();
-
-        switch (this.#state) {
-            case DialogueManager.State.Finished:
-                break;
-            
-            case DialogueManager.State.Writing:
-                break;
-        }
-
-        if (this.#charIndex > line.length) {
+        if (this.#charIndex > this.#currentLine.length) {
             this.#state = DialogueManager.State.Finished;
-            this.#dialogueArea.setText(line, ctx);
+            this.#dialogueArea.setText(this.#currentLine, ctx);
 
         } else {
-            const text = line.slice(0, this.#charIndex);
+            const text = this.#currentLine.slice(0, this.#charIndex);
             this.#dialogueArea.setText(text, ctx);
         }
     }
@@ -91,16 +88,22 @@ class DialogueManager {
         })
     }
 
-    openConversation(conv) {
+    openConversation(conv, callback = null) {
         this.#currentConv = conv;
         this.#lineIndex = -1;
         this.#dialogueArea.clear();
+
+        this.#callback = callback;
 
         this.#nextLine();
     }
 
     closeConversation() {
         this.#state = DialogueManager.State.Hidden;
+
+        if (typeof this.#callback === "function") {
+            this.#callback();
+        }
     }
 
     next() {
@@ -115,37 +118,65 @@ class DialogueManager {
         }
     }
 
-    isOpen() {
-        return this.#state !== DialogueManager.State.Hidden;
-    }
-
     #skipAnimation() {
         AudioPlayer.Next();
-        this.#charIndex = this.#currentLine().length;
-        this.#state = DialogueManager.State.Finished;
+        this.#charIndex = this.#currentLine.length;
     }
 
     #nextLine() {
         AudioPlayer.Next();
         this.#lineIndex++;
 
-        if (this.#lineIndex >= this.#dialogue[this.#currentConv].length) {
+        if (this.#lineIndex >= this.#getConversationLength()) {
             this.closeConversation();
             return;
         }
 
-        const ctx = document.getElementById("game-canvas").getContext("2d");
+        switch (this.#getLineType()) {
+            case "dialogue":
+                const ctx = document.getElementById("game-canvas").getContext("2d");
+                this.#nameLabel.setText(this.#getCharacter(), ctx);
+                this.#nameLabel.visible = true;
 
-        this.#nameLabel.setText(this.#currentCharacter(), ctx);
+                this.#currentLine = this.#getLine();
+                this.#charIndex = 1;
+                break;
+
+            case "item":
+                const item = this.#getItemName();
+
+                this.#nameLabel.visible = false;
+                this.#charIndex = this.#currentLine.length;
+
+                const inventoryFull = this.#playerInventory.addItem(item);
+                if (inventoryFull === 1) {
+                    this.#currentLine = `* Inventory Full *`;
+                } else {
+                    this.#currentLine = `* Obtained ${item} *`;
+                }
+                break;
+        }
+
         this.#state = DialogueManager.State.Writing;
-        this.#charIndex = 1;
     }
 
-    #currentLine() {
+    #getLineType() {
+        return this.#dialogue[this.#currentConv][this.#lineIndex].type;
+    }
+
+    #getLine() {
         return this.#dialogue[this.#currentConv][this.#lineIndex].line;
     }
 
-    #currentCharacter() {
+    #getCharacter() {
         return this.#dialogue[this.#currentConv][this.#lineIndex].name;
+    }
+
+    #getItemName() {
+        return this.#dialogue[this.#currentConv][this.#lineIndex].item;
+    }
+
+    #getConversationLength() {
+        return this.#dialogue[this.#currentConv].length;
     }
 }
