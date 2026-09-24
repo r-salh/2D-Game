@@ -37,6 +37,9 @@ class ImageLoader {
     };
     static PlayerImages = {}
 
+    static BinUrl = "art/entity/green_bin.png";
+    static Bin;
+
     #loadingText = "Loading...";
     #finishedText = "Finished loading!";
 
@@ -90,6 +93,13 @@ class ImageLoader {
                 ImageLoader.PlayerImages[key].push(img);
             }
         }
+
+        const bin = new Image();
+        bin.onload = () => {
+            this.#loaded++;
+        };
+        bin.src = ImageLoader.BinUrl;
+        ImageLoader.Bin = bin;
     }
 
     #centerText(ctx) {

@@ -5,6 +5,7 @@ class Overworld {
         Playing: 0,
         Paused: 1,
         Dialogue: 2,
+        BinOpen: 3,
     };
 
     #party;
@@ -12,9 +13,10 @@ class Overworld {
 
     #camera;
     #mapManager;
-    #dialogueManager;
 
+    #dialogueManager;
     #pauseMenu;
+    #binUI;
 
     #currentEntities;
 
@@ -29,15 +31,20 @@ class Overworld {
         this.#camera.setFollowing(this.#player);
 
         this.#mapManager = new MapManager();
-        this.#dialogueManager = new DialogueManager(
-            party.getInventory(),
-            ctx
-        );
 
-        this.#pauseMenu = new PauseMenu(
-            party.getInventory(),
-            ctx
-        );
+        const inventory = party.getInventory();
+        const onClose = () => {
+            this.#setState(Overworld.State.Playing);
+        };
+
+        this.#dialogueManager = new DialogueManager(inventory, ctx);
+        this.#dialogueManager.onClose = onClose;
+
+        this.#pauseMenu = new PauseMenu(inventory, ctx);
+        this.#pauseMenu.onClose = onClose;
+
+        this.#binUI = new BinUI(inventory, ctx);
+        this.#binUI.onClose = onClose;
 
         this.loadDungeon(Overworld.Tutorial);
     }
@@ -74,8 +81,19 @@ class Overworld {
 
         this.#party.draw(ctx, this.#camera);
 
-        this.#dialogueManager.draw(ctx);
-        this.#pauseMenu.draw(ctx);
+        switch (this.#state) {
+            case Overworld.State.Dialogue:
+                this.#dialogueManager.draw(ctx);
+                break;
+
+            case Overworld.State.Paused:
+                this.#pauseMenu.draw(ctx);
+                break;
+
+            case Overworld.State.BinOpen:
+                this.#binUI.draw(ctx);
+                break;
+        }
     }
 
     keyUp(key) {
@@ -111,6 +129,10 @@ class Overworld {
                 if (key === Keybind.Accept) {
                     this.#dialogueManager.next();
                 }
+                break;
+
+            case Overworld.State.BinOpen:
+                this.#binUI.keyUp(key);
                 break;
         }
     }
@@ -162,28 +184,37 @@ class Overworld {
                 case "npc":
                     const npc = new InteractableNPC(entity.x, entity.y);
                     npc.onInteract = () => {
-                        this.#openConversation(entity.conv);
+                        this.#setState(Overworld.State.Dialogue, entity.conv);
                     };
                     this.#currentEntities.push(npc);
                     break;
 
                 case "bin":
                     const bin = new Bin(entity.x, entity.y, this.#party.getInventory());
+                    bin.onInteract = () => {
+                        this.#setState(Overworld.State.BinOpen);
+                    }
                     this.#currentEntities.push(bin);
                     break;
             }
         }
     }
 
-    #openConversation(conv) {
-        this.#player.resetBools();
-        this.#state = Overworld.State.Dialogue;
+    #setState(state, kwargs = null) {
+        this.#state = state;
 
-        const callback = () => {
-            this.#state = Overworld.State.Playing;
-        };
+        switch (state) {
+            case Overworld.State.Dialogue:
+                this.#player.resetBools();
+                this.#dialogueManager.openConversation(kwargs);
+                break;
 
-        this.#dialogueManager.openConversation(conv, callback);
+            case Overworld.State.BinOpen:
+                this.#player.resetBools();
+                this.#binUI.toggle();
+                break;
+        }
+
     }
 }
 
@@ -363,17 +394,19 @@ class Camera {
 
 class PauseMenu {
     static State = {
-        Main: 0,
-        ShowInventory: 1,
-        ShowParty: 2,
-        ShowMap: 3,
+        Hidden: 0,
+        Main: 1,
+        ShowInventory: 2,
+        ShowParty: 3,
+        ShowMap: 4,
     };
 
-    #state = PauseMenu.State.Main;
-    #open = false;
+    #state = PauseMenu.State.Hidden;
 
     #optionsMenu;
     #playerInventory;
+
+    onClose;
 
     constructor(playerInventory, ctx) {
         this.#playerInventory = playerInventory;
@@ -401,7 +434,7 @@ class PauseMenu {
     }
 
     draw(ctx) {
-        if (!this.#open) { return }
+        if (this.#state === PauseMenu.State.Hidden) { return }
 
         this.#optionsMenu.draw(ctx);
 
@@ -413,7 +446,12 @@ class PauseMenu {
 
     keyUp(key) {
         if (key === Keybind.Cancel) {
-            this.#setState(PauseMenu.State.Main);
+            AudioPlayer.Next();
+            if (this.#state === PauseMenu.State.Main) {
+                this.#optionsMenu.setFocussed(true);
+            } else {
+                this.#setState(PauseMenu.State.Main);
+            }
             return;
         }
 
@@ -429,10 +467,12 @@ class PauseMenu {
     }
 
     toggle() {
-        this.#open = !this.#open;
+        AudioPlayer.Next();
 
-        if (this.#open) {
+        if (this.#state === PauseMenu.State.Hidden) {
             this.#setState(PauseMenu.State.Main);
+        } else {
+            this.#setState(PauseMenu.State.Hidden);
         }
     }
 
@@ -447,8 +487,161 @@ class PauseMenu {
             case PauseMenu.State.ShowInventory:
                 this.#playerInventory.setFocussed(true);
                 break;
+
+            case PauseMenu.State.Hidden:
+                AudioPlayer.Next();
+                if (typeof this.onClose === "function") {
+                    this.onClose();
+                }
+                break;
         }
 
         this.#optionsMenu.setFocussed(false);
     }
+}
+
+class BinUI {
+    static State = {
+        Hidden: 0,
+        Open: 1,
+        ItemSelected: 2,
+    }
+
+    #playerInventory;
+
+    #textBox;
+    #itemGrid;
+    #confirmSelection;
+
+    #selectText = "Select an item to throw away";
+    #confirmText = "Throw away X?";
+
+    #state = BinUI.State.Hidden;
+    #selectedItem;
+
+    onClose;
+
+    constructor(playerInventory, ctx) {
+        this.#playerInventory = playerInventory;
+
+        const padding = 20;
+        const width = 450;
+        const height = 80;
+        this.#textBox = new TextBox(this.#selectText, padding, padding, width, height, ctx);
+        this.#textBox.focussable = false;
+
+        const gridHeight = 300;
+        const gridY = 10 + padding + height;
+        this.#itemGrid = new Grid(5, 3, padding, gridY, 450, gridHeight);
+
+        const cX = padding * 4;
+        const cWidth = width - cX*2;
+        this.#confirmSelection = new HoriztonalBox(cX, gridY, cWidth, 60, 2);
+        this.#confirmSelection.addComponent("Confirm", ctx, () => { this.#deleteItem(ctx) });
+        this.#confirmSelection.addComponent("Cancel", ctx, () => { this.#cancel(ctx) });
+    }
+
+    toggle() {
+        if (this.#state === BinUI.State.Hidden) {
+            this.#state = BinUI.State.Open;
+            this.#updateGrid();
+            this.#itemGrid.setFocussed(true);
+        } else {
+            this.#state = BinUI.State.Hidden;
+        }
+    }
+
+    draw(ctx) {
+        if (this.#state === BinUI.State.Hidden) { return }
+
+        this.#textBox.draw(ctx);
+        
+        switch (this.#state) {
+            case BinUI.State.Open:
+                this.#itemGrid.draw(ctx);
+                break;
+
+            case BinUI.State.ItemSelected:
+                this.#confirmSelection.draw(ctx);
+                break;
+        }
+    }
+
+    keyUp(key) {
+        switch (this.#state) {
+            case BinUI.State.Open:
+                if (key !== Keybind.Cancel) {
+                    this.#itemGrid.keyUp(key);
+                    return;
+                } 
+
+                this.#state = BinUI.State.Hidden;
+                AudioPlayer.Next();
+                if (typeof this.onClose === "function") {
+                    this.onClose();
+                }
+                break;
+
+            case BinUI.State.ItemSelected:
+                if (key === Keybind.Cancel) {
+                    const ctx = document.getElementById("game-canvas").getContext("2d");
+                    this.#cancel(ctx);
+                } else {
+                    this.#confirmSelection.keyUp(key);
+                }
+                break;
+        }
+    }
+
+    #updateGrid() {
+        const ctx = document.getElementById("game-canvas").getContext("2d");
+
+        this.#itemGrid.clear();
+
+        const items = this.#playerInventory.getItems();
+
+        for (let x in items) {
+            const item = items[x];
+            const onClick = () => {
+                this.#select(item, ctx);
+            }
+            this.#itemGrid.addComponent(item, ctx, onClick);
+
+            const itemType = Inventory.ItemList[item].type;
+            if (itemType === "item") {
+                this.#itemGrid.setDisabledComponent(x, true);
+            }
+        }
+
+        if (items.length === Inventory.Capacity) { return }
+
+        for (let i = items.length; i < 15; i++) {
+            this.#itemGrid.addComponent("------", ctx);
+            this.#itemGrid.setDisabledComponent(i, true);
+        }
+    }
+
+    #select(item, ctx) {
+        this.#state = BinUI.State.ItemSelected;
+        this.#selectedItem = item;
+
+        const text = this.#confirmText.replace("X", item);
+        this.#textBox.setText(text, ctx);
+        this.#confirmSelection.setFocussed(true);
+    }
+
+    #deleteItem(ctx) {
+        this.#playerInventory.removeItem(this.#selectedItem);
+        this.#state = BinUI.State.Open;
+
+        this.#textBox.setText(this.#selectText, ctx);
+        this.#updateGrid();
+        this.#itemGrid.setFocussed(true);
+    }
+
+    #cancel(ctx) {
+        AudioPlayer.Next();
+        this.#state = BinUI.State.Open;
+        this.#textBox.setText(this.#selectText, ctx);
+    }   
 }

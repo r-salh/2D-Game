@@ -5,8 +5,6 @@ class DialogueManager {
         Hidden: 2,
     }
 
-    static World1 = "world_1";
-
     animationSpeed = 1/15;
     #state = DialogueManager.State.Hidden;
     #timeElapsed = 0;
@@ -22,7 +20,7 @@ class DialogueManager {
 
     #playerInventory;
 
-    #callback;
+    onClose;
 
     constructor(inventory, ctx) {
         this.#playerInventory = inventory;
@@ -88,12 +86,10 @@ class DialogueManager {
         })
     }
 
-    openConversation(conv, callback = null) {
+    openConversation(conv) {
         this.#currentConv = conv;
         this.#lineIndex = -1;
         this.#dialogueArea.clear();
-
-        this.#callback = callback;
 
         this.#nextLine();
     }
@@ -101,8 +97,8 @@ class DialogueManager {
     closeConversation() {
         this.#state = DialogueManager.State.Hidden;
 
-        if (typeof this.#callback === "function") {
-            this.#callback();
+        if (typeof this.onClose === "function") {
+            this.onClose();
         }
     }
 

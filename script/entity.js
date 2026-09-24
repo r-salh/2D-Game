@@ -1,5 +1,5 @@
 class Interactable {
-    promptRadius = 160;
+    promptRadius = 90;
     showPrompt = false;
     onInteract = null;
 
@@ -12,6 +12,9 @@ class Interactable {
     #promptX;
     #promptY;
 
+    #centerX;
+    #centerY;
+
     constructor(sprite, tileX, tileY, width, height) {
         this.#sprite = sprite;
 
@@ -23,7 +26,10 @@ class Interactable {
         this.#width = width;
         this.#height = height;
 
-        this.#promptX = this.#x + this.#width/2 - 5;
+        this.#centerX = this.#x + this.#width/2;
+        this.#centerY = this.#y + this.#height/2;
+
+        this.#promptX = this.#centerX - 5;
         this.#promptY = this.#y - 5;
     }
 
@@ -41,8 +47,8 @@ class Interactable {
     }
 
     update(playerX, playerY) {
-        const deltaX = Math.abs(playerX - this.#x);
-        const deltaY = Math.abs(playerY - this.#y);
+        const deltaX = Math.abs(playerX - this.#centerX);
+        const deltaY = Math.abs(playerY - this.#centerY);
         const dist = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
 
         if (dist < this.promptRadius) {
@@ -67,6 +73,15 @@ class Interactable {
 class InteractableNPC extends Interactable {
     constructor(tileX, tileY) {
         super(ImageLoader.PlayerImages.standDown[0], tileX, tileY, Player.Size, Player.Size);
+    }
+}
+
+class Bin extends Interactable {
+    #playerInventory;
+    constructor(tileX, tileY, playerInventory) {
+        super(ImageLoader.Bin, tileX, tileY, Player.Size, Player.Size);
+
+        this.#playerInventory = playerInventory;
     }
 }
 
@@ -330,12 +345,22 @@ class Inventory {
         this.#updateGrid();
     }
 
+    removeItem(item) {
+        const index = this.#items.indexOf(item);
+        this.#items.splice(index, 1);
+        this.#updateGrid();
+    }
+
     draw(ctx) {
         this.#grid.draw(ctx);
         
         for (let i in this.#itemComponents) {
             this.#itemComponents[i].draw(ctx);
         }
+    }
+
+    getItems() {
+        return this.#items;
     }
 
     keyUp(key) {
@@ -441,7 +466,7 @@ class Inventory {
     }
 
     #initUIComponents(ctx) {
-               const gridHeight = 300;
+        const gridHeight = 300;
         const gridY = 130;
 
         this.#grid = new Grid(5, 3, 20, gridY, 450, gridHeight);
