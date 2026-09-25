@@ -489,6 +489,8 @@ class Grid {
 
     #rows;
     #cols;
+    #totalComponents;
+
     #colWidth;
     #x;
     #y;
@@ -498,6 +500,8 @@ class Grid {
     constructor(rows, cols, x, y, width, height) {
         this.#rows = rows;
         this.#cols = cols;
+        this.#totalComponents = rows * cols;
+
         this.#x = x;
         this.#y = y;
         this.#width = width;
@@ -579,6 +583,39 @@ class Grid {
         }
 
         this.#focussedCol = this.#content[0];
+    }
+
+    setComponentsFromArray(stringArray, onClick = null) {
+        if (!Array.isArray(stringArray)) {
+            throw new Error("Argument must be an array");
+        }
+
+        this.clear();
+        const ctx = document.getElementById("game-canvas").getContext("2d");
+
+        const onClickPassed = typeof onClick === "function";
+
+        for (let i in stringArray) {
+            const item = stringArray[i];
+
+            if (onClickPassed) {
+                const onItemClick = () => {
+                    onClick(item);
+                }
+                this.addComponent(item, ctx, onItemClick);
+            } else {
+                this.addComponent(item, ctx);
+            }
+        }
+
+        if (stringArray.length === this.#totalComponents) {
+            return;
+        }
+
+        for (let i = stringArray.length; i < this.#totalComponents; i++) {
+            this.addComponent("------", ctx);
+            this.setDisabledComponent(i, true);
+        }
     }
 
     keyUp(key) {

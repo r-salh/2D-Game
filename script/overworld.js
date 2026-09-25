@@ -392,6 +392,9 @@ class Camera {
     }
 }
 
+//---------------------------------------------------------------
+// GUI classes
+
 class PauseMenu {
     static State = {
         Hidden: 0,
@@ -404,12 +407,12 @@ class PauseMenu {
     #state = PauseMenu.State.Hidden;
 
     #optionsMenu;
-    #playerInventory;
+    #inventoryUI;
 
     onClose;
 
     constructor(playerInventory, ctx) {
-        this.#playerInventory = playerInventory;
+        this.#inventoryUI = new InventoryUI(playerInventory, ctx);
 
         this.#optionsMenu = new HoriztonalBox(20, 20, 450, 100, 3, ctx);
 
@@ -440,7 +443,7 @@ class PauseMenu {
 
         switch (this.#state) {
             case PauseMenu.State.ShowInventory:
-                this.#playerInventory.draw(ctx);
+                this.#inventoryUI.draw(ctx);
         }
     }
 
@@ -461,7 +464,7 @@ class PauseMenu {
                 break;
 
             case PauseMenu.State.ShowInventory:
-                this.#playerInventory.keyUp(key);
+                this.#inventoryUI.keyUp(key);
                 break;
         }
     }
@@ -485,7 +488,8 @@ class PauseMenu {
                 return;
 
             case PauseMenu.State.ShowInventory:
-                this.#playerInventory.setFocussed(true);
+                this.#inventoryUI.setFocussed(true);
+                this.#optionsMenu.setFocussed(false);
                 break;
 
             case PauseMenu.State.Hidden:
@@ -495,8 +499,134 @@ class PauseMenu {
                 }
                 break;
         }
+    }
+}
 
-        this.#optionsMenu.setFocussed(false);
+class InventoryUI {
+    #grid;
+    #infoBackground;
+    #itemName;
+    #itemType;
+    #itemDesc;
+    #itemStrength;
+
+    #itemComponents = [];
+
+    #playerInventory;
+
+    constructor(playerInventory, ctx) {
+        this.#playerInventory = playerInventory;
+
+        // Initialise UI
+        const gridHeight = 300;
+        const gridY = 130;
+
+        this.#grid = new Grid(5, 3, 20, gridY, 450, gridHeight);
+        this.#updateGrid();
+
+        const smHeight = 45;
+        const medHeight = 100;
+
+        const infoWidth = 200;
+        const infoHeight = 3*smHeight + medHeight - 4;
+        const infoX = 480;
+        const infoY = gridY;
+
+        this.#infoBackground = new TextBox("", infoX, infoY, infoWidth, infoHeight, ctx);
+        this.#infoBackground.visible = false;
+        this.#itemComponents.push(this.#infoBackground);
+        
+        this.#itemName = new TextBox("item name", infoX, infoY, infoWidth, smHeight, ctx);
+        this.#itemComponents.push(this.#itemName);
+        
+        const descY = infoY + smHeight;
+        this.#itemDesc = new TextBox("Item description item description", infoX, descY, infoWidth, medHeight, ctx);
+        this.#itemComponents.push(this.#itemDesc);
+
+        const strengthY = descY + medHeight;
+        this.#itemStrength = new TextBox("Heals 5 hp", infoX, strengthY, infoWidth, smHeight, ctx);
+        this.#itemComponents.push(this.#itemStrength);
+
+        const typeY = strengthY + smHeight - 10;
+        this.#itemType = new TextBox("Item type", infoX, typeY, infoWidth, smHeight, ctx);
+        this.#itemComponents.push(this.#itemType);
+
+        // Set GUI look
+        for (let i = 1; i < this.#itemComponents.length; i++) {
+            const component = this.#itemComponents[i];
+            component.setAlignment(TextBox.Alignment.TopLeft, ctx);
+            component.focussable = false;
+        }
+        for (let i = 2; i < this.#itemComponents.length; i++) {
+            const component = this.#itemComponents[i];
+            component.background = null;
+            component.border = null;
+        }
+    }
+
+    draw(ctx) {
+        this.#grid.draw(ctx);
+        
+        for (let i in this.#itemComponents) {
+            this.#itemComponents[i].draw(ctx);
+        }
+    }
+
+    keyUp(key) {
+        this.#grid.keyUp(key);
+    }
+
+    setFocussed(focussed) {
+        if (focussed == false) { 
+            this.#grid.setFocussed(false);
+            return;
+        }
+
+        for (let i in this.#itemComponents) {
+            this.#itemComponents[i].visible = false;
+        }
+        this.#updateGrid();
+        this.#grid.setFocussed(true);
+    }
+
+    #updateGrid() {
+        this.#grid.setComponentsFromArray(
+            this.#playerInventory.getItems(),
+            (item) => this.#showItemInfo(item)
+        );
+    }
+
+    #showItemInfo(itemName) {
+        const ctx = document.getElementById("game-canvas").getContext("2d");
+
+        const itemProperties = Inventory.ItemList[itemName];
+        const itemDesc = itemProperties.desc;
+        const itemType = itemProperties.type.charAt(0).toUpperCase() + itemProperties.type.substring(1);
+
+        this.#itemName.setText(itemName, ctx);
+        this.#itemDesc.setText(itemDesc, ctx);
+        this.#itemType.setText(itemType, ctx);
+
+        switch (itemType) {
+            case "Food":
+                const hp = itemProperties.hp;
+                this.#itemStrength.setText(`Recovers ${hp} HP`, ctx);
+                break;
+
+            case "Drink":
+                const mp = itemProperties.mp;
+                this.#itemStrength.setText(`Recovers ${mp} MP`, ctx);
+                break;
+
+            case "Item":
+            default:
+                this.#itemStrength.setText(``, ctx);
+                break;
+        }
+
+        for (let i in this.#itemComponents) {
+            this.#itemComponents[i].visible = true;
+        }
     }
 }
 
@@ -594,37 +724,28 @@ class BinUI {
     }
 
     #updateGrid() {
-        const ctx = document.getElementById("game-canvas").getContext("2d");
-
-        this.#itemGrid.clear();
-
         const items = this.#playerInventory.getItems();
 
+        this.#itemGrid.setComponentsFromArray(
+            items,
+            (item) => this.#select(item)
+        );
+
+        // Can't throw away "item"s
         for (let x in items) {
             const item = items[x];
-            const onClick = () => {
-                this.#select(item, ctx);
-            }
-            this.#itemGrid.addComponent(item, ctx, onClick);
-
             const itemType = Inventory.ItemList[item].type;
             if (itemType === "item") {
                 this.#itemGrid.setDisabledComponent(x, true);
             }
         }
-
-        if (items.length === Inventory.Capacity) { return }
-
-        for (let i = items.length; i < 15; i++) {
-            this.#itemGrid.addComponent("------", ctx);
-            this.#itemGrid.setDisabledComponent(i, true);
-        }
     }
 
-    #select(item, ctx) {
+    #select(item) {
         this.#state = BinUI.State.ItemSelected;
         this.#selectedItem = item;
 
+        const ctx = document.getElementById("game-canvas").getContext("2d");
         const text = this.#confirmText.replace("X", item);
         this.#textBox.setText(text, ctx);
         this.#confirmSelection.setFocussed(true);
